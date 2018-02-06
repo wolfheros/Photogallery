@@ -39,14 +39,15 @@ public class FlickFetchr {
         // connection.setRequestProperty("User-Agent", "Mozilla/5.0");
 
         try {
-            // 创建一个字节数组输出流对象
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            // 从打开的连接中读取数据流
-            InputStream in = connection.getInputStream();
             // 如果返回数据不等于，HTTP_OK,抛出异常。
             if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
                 throw new IOException(connection.getResponseMessage() + ": with" +urlSpec);
             }
+            // 从打开的连接中读取数据流
+            InputStream in = connection.getInputStream();
+
+            // 创建一个字节数组输出流对象
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
 
             int byteRead = 0;
             byte[] buffer = new byte[1024];
@@ -86,7 +87,7 @@ public class FlickFetchr {
                     .appendQueryParameter("format","json")
                     .appendQueryParameter("nojsoncallback" ,"1")
                     .appendQueryParameter("extras" ,"url_sq")
-                    .appendQueryParameter("page", "2")
+                    //.appendQueryParameter("page", "2")
                     //.appendQueryParameter("extras" ,"url_s")
                     // 合并成一个URl
                     .build().toString();
@@ -116,6 +117,8 @@ public class FlickFetchr {
         JSONArray jsonArray = photosJsonObject.getJSONArray("photo");
         // 转换成jsonArray。
         String jsonToString = jsonArray.toString();
+
+        // 利用Gson获取实例
         Gson gson = new Gson();
         // 获取Collection 中的type类型。
         Type collectionType = new TypeToken<Collection<GalleryItem>>(){}.getType();

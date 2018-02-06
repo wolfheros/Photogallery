@@ -1,5 +1,6 @@
 package com.bignerdranch.android.photogallery;
 
+import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -10,7 +11,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
+import android.widget.ImageView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +26,8 @@ public class PhotoGalleryFragment extends Fragment {
     private static final String TAG = "PhotoGalleryFragment";
     // 变量mItems 会在AsyncTask 中传入新的对象
     private List<GalleryItem> mItems = new ArrayList<>();
+    // 创建的后台looper主线程用来下载的实例
+    private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
 
 
     public static PhotoGalleryFragment newInstance() {
@@ -38,6 +41,12 @@ public class PhotoGalleryFragment extends Fragment {
        setRetainInstance(true);
        // 这里调用后台线程的方法，可以使 mItems List<GalleryItem> 对象不为空。
        new FetchItemsTask().execute();
+
+       // 创建一个ThumbnailDownloader 用于后台下载的进程。
+        mThumbnailDownloader = new ThumbnailDownloader<>();
+        mThumbnailDownloader.start();
+        mThumbnailDownloader.getLooper();
+        Log.i(TAG, "Background thread started");
     }
 
     @Nullable
@@ -60,33 +69,36 @@ public class PhotoGalleryFragment extends Fragment {
         if (isAdded()){
             mPhotoRecyclerView.setAdapter(new PhotoAdapter(mItems));
 
-            mPhotoRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-                // 重写的两个方法
-                @Override
-                public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
-                    super.onScrollStateChanged(recyclerView, newState);
-                }
-                @Override
-                public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                    super.onScrolled(recyclerView, dx, dy);
-                })
-            });
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mThumbnailDownloader.quit();
+        Log.i(TAG , "Background thread Destroy");
     }
 
     // ViewHolder 视图
     private class PhotoHolder extends RecyclerView.ViewHolder {
-        private TextView mTitleTextView;
+        //private TextView mTitleTextView;
+        private ImageView mItemImageView;
 
         public PhotoHolder(View itemView) {
             super(itemView);
 
-            mTitleTextView =(TextView) itemView;
+            // mTitleTextView =(TextView) itemView;
+            mItemImageView = (ImageView) itemView
+                    .findViewById(R.id.fragment_photo_garllery_image_view);
         }
 
-        public void bindGalleryItem(GalleryItem item) {
-            // 重写后的toString() 方法。
-            mTitleTextView.setText(item.toString());
+//        public void bindGalleryItem(GalleryItem item) {
+//            // 重写后的toString() 方法。
+//            mTitleTextView.setText(item.toString());
+//        }
+        // 在这个ImageView 上设置drawable对象。
+        public void bindDrawable(Drawable drawable) {
+            mItemImageView.setImageDrawable(drawable);
         }
     }
 
@@ -100,19 +112,27 @@ public class PhotoGalleryFragment extends Fragment {
         // 创建PhotoHolder
         @Override
         public PhotoHolder onCreateViewHolder(ViewGroup viewGroup ,int viewType) {
-            // 创建一个textview 视图，然后传给P后头 Holder作为视图。
-            TextView textView = new TextView(getActivity());
-            return new PhotoHolder(textView);
+            // 创建一个textView视图，然后传给P后头 Holder作为视图。
+//            TextView textView = new TextView(getActivity());
+//            return new PhotoHolder(textView);
+            // 替换TextView 成 immageView
+
+            LayoutInflater inflater = LayoutInflater.from(getActivity());
+            View view = inflater.inflate(R.layout.gallery_item , viewGroup ,false);
+
+            return new PhotoHolder(view);
         }
         // 在这里进行绑定
         @Override
         public void onBindViewHolder(PhotoHolder photoHolder , int position) {
+            // 触发图片下载的的确应该放在这里进行。当显示到指定位置时，就更新下载视图
             GalleryItem galleryItem = mGalleryItems.get(position);
             Log.i(TAG ,"当前位置为" + position);
-           /* if (position = 99) {
-
-            }*/
-            photoHolder.bindGalleryItem(galleryItem);
+            //photoHolder.bindGalleryItem(galleryItem);
+            // 绑定imageView 视图
+            Drawable placeholder = getResources().getDrawable(R.drawable.james_huker);
+            photoHolder.bindDrawable(placeholder);
+            mThumbnailDownloader.queueThumbnail(photoHolder , galleryItem.getUrl_sq());
         }
 
         @Override
